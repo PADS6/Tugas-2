@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+for d in ./data/2021/*/*; do
+    if [ -f "${d}/makeup.csv" ] && [ -f "${d}/grades.csv" ]; then
+        merge_csv "${d}/makeup.csv" "${d}/grades.csv" "${d}/combined_grades_and_makeup.csv"
+    fi
+done
