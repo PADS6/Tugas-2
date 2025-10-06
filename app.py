@@ -39,7 +39,7 @@ with tab_correlation:
 
     fig, ax = plt.subplots(figsize=(12, 8))
     sns.heatmap(correlation_df, annot=True, cmap='coolwarm', center=0, ax=ax);
-    ax.set_title("Pearson Correlation Heatmap")
+    ax.set_title(f"Pearson Correlation Heatmap ({chosen_category}, {chosen_year}, {chosen_language})")
     st.pyplot(fig)
 
 
