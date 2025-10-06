@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from scipy.stats import ttest_ind
 
 cwd: str = os.getcwd()
 
@@ -46,7 +47,7 @@ with tab_correlation:
 
 
 with tab_average:
-    _ = st.subheader("Mean differences")
+    _ = st.subheader("Mean Grades Differences")
 
     chosen_year: str = st.selectbox(
         "Choose the year",
@@ -75,6 +76,7 @@ with tab_average:
         en_file: str = os.path.join(cwd, "data", chosen_year, chosen_category, "en", "combined_grades_and_makeup.csv")
         id_file: str = os.path.join(cwd, "data", chosen_year, chosen_category, "id", "combined_grades_and_makeup.csv")
 
+
         if not os.path.isfile(en_file):
             en_file = os.path.join(cwd, "data", chosen_year, chosen_category, "en", "grades.csv")
 
@@ -97,7 +99,7 @@ with tab_average:
     summary_df = pd.concat([en_mean, id_mean], ignore_index=True)
 
     fig, ax = plt.subplots(figsize=(18, 8))
-    sns.barplot(
+    _ = sns.barplot(
         data=summary_df,
         x="Question",
         y="Mean",
@@ -106,26 +108,25 @@ with tab_average:
         ax=ax,
         errorbar=None
     )
-    _ = ax.set_title(f"Mean per question ({chosen_category}, {chosen_year})")
-    _ = ax.set_xlabel("Soal")
-    _ = ax.set_ylabel("Rata-rata nilai")
-    _ = ax.legend(title="Bahasa")
+    _ = ax.set_title(f"Mean of Grades per Question ({chosen_category}, {chosen_year})")
+    _ = ax.set_xlabel("Question")
+    _ = ax.set_ylabel("Mean of Grades")
+    _ = ax.legend(title="Language")
     _ = st.pyplot(fig)
-    st.divider()
-    from scipy.stats import ttest_ind
-    st.subheader("Uji Signifikansi (Independent t-test)")
-    en_scores=en_df.iloc[:, 6:].replace("-", "0").apply(pd.to_numeric, errors='coerce')
-    id_scores=id_df.iloc[:, 6:].replace("-", "0").apply(pd.to_numeric, errors='coerce')
-    t_test_result=[]
+    _ = st.divider()
+    _ = st.subheader("Significance Test (Independent t-test)")
+    en_scores  = en_df.iloc[:, 6:].replace("-", "0").apply(pd.to_numeric, errors='coerce')
+    id_scores  = id_df.iloc[:, 6:].replace("-", "0").apply(pd.to_numeric, errors='coerce')
+    t_test_result  = []
     for col in en_scores.columns:
-        en_value=en_scores[col]
-        id_value=id_scores[col]
+        en_value = en_scores[col]
+        id_value = id_scores[col]
         _, p_val = ttest_ind(en_value, id_value, equal_var=False)
         t_test_result.append({
             "Question":col,
-            "Significant": "Yes" if p_val <0.05 else "No"
+            "Significant": "Yes" if p_val < 0.05 else "No"
         })
-    t_df=pd.DataFrame(t_test_result)
+
+    t_df: pd.DataFrame = pd.DataFrame(t_test_result)
     t_df.set_index(t_df.columns[0], inplace=True)
     st.dataframe(t_df.T.style.hide(axis="index"), use_container_width=False)
-    # st.dataframe(t_df)

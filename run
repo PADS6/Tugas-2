@@ -1,4 +1,4 @@
 #!/bin/env python
 import subprocess
 
-_ = subprocess.run(["streamlit", "run", "app.py"]);
+_ = subprocess.run(["python", "-m", "streamlit", "run", "app.py"]);
