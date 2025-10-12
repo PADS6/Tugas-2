@@ -4,3 +4,4 @@ pandas
 pandas-stubs
 matplotlib
 scipy
+statsmodels

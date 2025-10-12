@@ -3,12 +3,16 @@ import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy.stats import ttest_ind
+import numpy as np
+from statsmodels.stats.proportion import proportions_ztest
 
 cwd: str = os.getcwd()
 
 _ = st.title("Bebras Dashboard")
 tab_correlation, tab_average = st.tabs(["Correlation", "Average"])
+
+def score_to_bool(score: float) -> bool: 
+    return score > 0
 
 with tab_correlation:
     _ = st.subheader("Correlation")
@@ -47,7 +51,7 @@ with tab_correlation:
 
 
 with tab_average:
-    _ = st.subheader("Mean Grades Differences")
+    _ = st.subheader("Proportion of Correct Answers")
 
     chosen_year: str = st.selectbox(
         "Choose the year",
@@ -66,12 +70,11 @@ with tab_average:
 
     en_df: pd.DataFrame
     id_df: pd.DataFrame
+    en_file: str
+    id_file: str
     if chosen_year == "2020":
         en_file: str = os.path.join(cwd, "data", chosen_year, chosen_category, "en", "challenge.csv")
         id_file: str = os.path.join(cwd, "data", chosen_year, chosen_category, "id", "challenge.csv")
-
-        en_df = pd.read_csv(en_file)
-        id_df = pd.read_csv(id_file)
     else:
         en_file: str = os.path.join(cwd, "data", chosen_year, chosen_category, "en", "combined_grades_and_makeup.csv")
         id_file: str = os.path.join(cwd, "data", chosen_year, chosen_category, "id", "combined_grades_and_makeup.csv")
@@ -83,50 +86,60 @@ with tab_average:
         if not os.path.isfile(id_file):
             id_file = os.path.join(cwd, "data", chosen_year, chosen_category, "id", "grades.csv")
 
-        en_df = pd.read_csv(en_file)
-        id_df = pd.read_csv(id_file)
+    en_df = pd.read_csv(en_file).iloc[:, 6:].replace("-", "0").apply(pd.to_numeric, errors='coerce').map(score_to_bool)
+    id_df = pd.read_csv(id_file).iloc[:, 6:].replace("-", "0").apply(pd.to_numeric, errors='coerce').map(score_to_bool)
 
-    en_mean = pd.DataFrame(en_df.iloc[:, 6:].replace("-", "0").apply(pd.to_numeric, errors='coerce').corr(method="pearson").mean()).reset_index()
-    id_mean = pd.DataFrame(id_df.iloc[:, 6:].replace("-", "0").apply(pd.to_numeric, errors='coerce').corr(method="pearson").mean()).reset_index()
+    en_proportion = pd.DataFrame(en_df.mean()).reset_index()
+    id_proportion = pd.DataFrame(id_df.mean()).reset_index()
 
+    en_proportion.columns = ["Question", "Proportion"]
+    en_proportion["Language"] = "English"
 
-    en_mean.columns = ["Question", "Mean"]
-    en_mean["Language"] = "English"
+    id_proportion.columns = ["Question", "Proportion"]
+    id_proportion["Language"] = "Indonesian"
 
-    id_mean.columns = ["Question", "Mean"]
-    id_mean["Language"] = "Indonesian"
-
-    summary_df = pd.concat([en_mean, id_mean], ignore_index=True)
+    summary_df = pd.concat([en_proportion, id_proportion], ignore_index=True)
 
     fig, ax = plt.subplots(figsize=(18, 8))
     _ = sns.barplot(
         data=summary_df,
         x="Question",
-        y="Mean",
+        y="Proportion",
         hue="Language",
         palette="Set2",
         ax=ax,
         errorbar=None
     )
-    _ = ax.set_title(f"Mean of Grades per Question ({chosen_category}, {chosen_year})")
+    _ = ax.set_ylim(0, 1)
+    _ = ax.set_title(f"Proportion of Correct Answers per Question ({chosen_category}, {chosen_year})")
     _ = ax.set_xlabel("Question")
-    _ = ax.set_ylabel("Mean of Grades")
+    _ = ax.set_ylabel("Proportion of Correct Answers")
     _ = ax.legend(title="Language")
-    _ = st.pyplot(fig)
-    _ = st.divider()
-    _ = st.subheader("Significance Test (Independent t-test)")
-    en_scores  = en_df.iloc[:, 6:].replace("-", "0").apply(pd.to_numeric, errors='coerce')
-    id_scores  = id_df.iloc[:, 6:].replace("-", "0").apply(pd.to_numeric, errors='coerce')
-    t_test_result  = []
-    for col in en_scores.columns:
-        en_value = en_scores[col]
-        id_value = id_scores[col]
-        _, p_val = ttest_ind(en_value, id_value, equal_var=False)
-        t_test_result.append({
-            "Question":col,
-            "Significant": "Yes" if p_val < 0.05 else "No"
+
+    en_n = len(en_df)
+    id_n = len(id_df)
+
+    ztest_results = []
+
+    for q in en_df.columns:
+        count = [en_df[q].sum(), id_df[q].sum()]
+        nobs = [en_n, id_n]
+
+        zstat, p_value = proportions_ztest(count, nobs)
+
+        ztest_results.append({
+            "Question": q,
+            "Z statistic": zstat,
+            "P-Value": p_value,
+            "Significant": "Yes" if p_value <= 0.05 else "No",
+            "ID len": id_n,
+            "EN len": en_n,
         })
 
-    t_df: pd.DataFrame = pd.DataFrame(t_test_result)
-    t_df.set_index(t_df.columns[0], inplace=True)
-    st.dataframe(t_df.T.style.hide(axis="index"), use_container_width=False)
+    for c in ax.containers:
+        ax.bar_label(c)
+
+    _ = st.pyplot(fig)
+    _ = st.divider()
+    _ = st.subheader("Significance Test (Proportion Z-test)")
+    _ = st.dataframe(pd.DataFrame(ztest_results))
