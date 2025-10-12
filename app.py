@@ -9,7 +9,7 @@ from statsmodels.stats.proportion import proportions_ztest
 cwd: str = os.getcwd()
 
 _ = st.title("Bebras Dashboard")
-tab_correlation, tab_average = st.tabs(["Correlation", "Average"])
+tab_correlation, tab_proportion = st.tabs(["Correlation", "Proportion"])
 
 def score_to_bool(score: float) -> bool: 
     return score > 0
@@ -50,7 +50,7 @@ with tab_correlation:
     st.pyplot(fig)
 
 
-with tab_average:
+with tab_proportion:
     _ = st.subheader("Proportion of Correct Answers")
 
     chosen_year: str = st.selectbox(
@@ -135,9 +135,6 @@ with tab_average:
             "ID len": id_n,
             "EN len": en_n,
         })
-
-    for c in ax.containers:
-        ax.bar_label(c)
 
     _ = st.pyplot(fig)
     _ = st.divider()
