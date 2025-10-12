@@ -131,9 +131,7 @@ with tab_proportion:
             "Question": q,
             "Z statistic": zstat,
             "P-Value": p_value,
-            "Significant": "Yes" if p_value <= 0.05 else "No",
-            "ID len": id_n,
-            "EN len": en_n,
+            "Significant": "Yes" if p_value <= 0.05 else "No"
         })
 
     _ = st.pyplot(fig)
